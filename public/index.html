@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#060b0e" />
+    <meta
+      name="description"
+      content="切面战争 FIVE / SLICE：在 9×9×9 三维空间里下五子棋。落子，或者切开棋盘，翻转进入另一张 9×9 切面。支持人机与房间码联机。"
+    />
+    <title>切面战争 · FIVE / SLICE — 三维五子棋</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <svg class="svg-defs" aria-hidden="true" width="0" height="0">
+      <defs>
+        <symbol id="i-cube" viewBox="0 0 32 32">
+          <path d="M5 10.5 16 4l11 6.5v11L16 28 5 21.5v-11Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          <path d="m5 10.5 11 6.5 11-6.5M16 17v11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          <path d="m5 16 11 6.5L27 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" opacity=".5"/>
+        </symbol>
+        <symbol id="i-sound-on" viewBox="0 0 24 24">
+          <path d="M4 9.5h3l4-3.5v12l-4-3.5H4v-5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M15 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-sound-off" viewBox="0 0 24 24">
+          <path d="M4 9.5h3l4-3.5v12l-4-3.5H4v-5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="m15 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-rules" viewBox="0 0 24 24">
+          <path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v13H7.5A2.5 2.5 0 0 1 5 17.5v-13Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M5 17.5A2.5 2.5 0 0 1 7.5 15H19M8.5 8h5M8.5 11h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24">
+          <rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        </symbol>
+        <symbol id="i-cut" viewBox="0 0 24 24">
+          <circle cx="6.5" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6.5" cy="17" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="m8.6 8.3 11 7.4M8.6 15.7l11-7.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+          <path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24">
+          <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24">
+          <path d="M19 8a8 8 0 1 0 .7 7.5M19 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="i-door" viewBox="0 0 24 24">
+          <path d="M10 4H5v16h5M14 8l4 4-4 4M9 12h9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="i-dots" viewBox="0 0 24 24">
+          <circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="world" aria-hidden="true">
+      <div class="world-grid"></div>
+      <div class="world-glow world-glow-a"></div>
+      <div class="world-glow world-glow-b"></div>
+      <div class="world-vignette"></div>
+    </div>
+
+    <header class="site-header" id="site-header">
+      <button class="brand" id="brand-home" type="button" aria-label="返回切面战争首页">
+        <span class="brand-mark"><svg><use href="#i-cube"></use></svg></span>
+        <span class="brand-word"><strong>切面战争</strong><small>FIVE / SLICE</small></span>
+      </button>
+
+      <div class="header-context" id="header-context">
+        <span class="context-pulse" aria-hidden="true"></span>
+        <span id="context-text">三维五子棋</span>
+        <button class="context-copy" id="context-copy" type="button" hidden aria-label="复制邀请链接">
+          <svg><use href="#i-copy"></use></svg>
+        </button>
+      </div>
+
+      <nav class="header-actions" aria-label="站点操作">
+        <button class="header-btn" id="sound-btn" type="button" aria-pressed="true" aria-label="关闭音效">
+          <svg id="sound-icon"><use href="#i-sound-on"></use></svg>
+          <span>音效</span>
+        </button>
+        <button class="header-btn" id="rules-btn" type="button" aria-label="查看规则">
+          <svg><use href="#i-rules"></use></svg>
+          <span>规则</span>
+        </button>
+        <button class="header-btn header-btn-leave" id="leave-btn" type="button" aria-label="离开对局" hidden>
+          <svg><use href="#i-door"></use></svg>
+          <span>离开</span>
+        </button>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <!-- ══════════════════════════ HOME ══════════════════════════ -->
+      <section class="screen home-screen" id="screen-home">
+        <div class="home-hero">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="eyebrow-rule"></span> 9 × 9 × 9 · THREE-DIMENSIONAL GOMOKU</p>
+            <div class="hero-title-wrap">
+              <h1 class="hero-title"><span>切面</span><span class="accent">战争</span></h1>
+              <span class="hero-side-note">五子棋 · 三维变体</span>
+            </div>
+            <p class="hero-sub">五子连珠，不止一面。<br />切开棋盘，把对手拖进你的维度。</p>
+            <div class="hero-stats">
+              <div><strong>729</strong><span>立体交点</span></div>
+              <div><strong>27</strong><span>可切平面</span></div>
+              <div><strong>13</strong><span>五连方向</span></div>
+            </div>
+            <button class="hero-scroll" id="hero-scroll" type="button">
+              <span>选择你的战场</span>
+              <svg><use href="#i-arrow"></use></svg>
+            </button>
+          </div>
+
+          <figure class="hero-visual">
+            <div class="hero-canvas-wrap">
+              <canvas id="hero-canvas" aria-hidden="true"></canvas>
+              <div class="hero-float hero-float-plane">
+                <span>当前切面</span>
+                <strong>Z = 4</strong>
+                <small>水平面 · X × Y</small>
+              </div>
+              <div class="hero-float hero-float-cut">
+                <span class="cut-dot"></span>
+                <div><span>切痕</span><strong>Y = 2</strong></div>
+              </div>
+              <div class="hero-status"><span></span>所有棋子永久保留在三维坐标中</div>
+            </div>
+            <figcaption>
+              <span>FIG. 01</span>
+              一张 9×9 切面，一次 90° 翻转。你的棋子仍在其他层里等待。
+            </figcaption>
+          </figure>
+        </div>
+
+        <div class="mode-grid" id="play-modes">
+          <article class="mode-card mode-ai">
+            <div class="card-topline"><span class="card-index">01</span><span class="card-tag">SOLO</span></div>
+            <div class="mode-heading">
+              <h2>人机对战</h2>
+              <p>与「镜面引擎」对弈。三档思考深度，随时开局。</p>
+            </div>
+            <div class="difficulty" role="radiogroup" aria-label="选择 AI 难度">
+              <button type="button" class="difficulty-btn" data-level="easy" role="radio" aria-checked="false">轻松<small>会走神</small></button>
+              <button type="button" class="difficulty-btn is-active" data-level="normal" role="radio" aria-checked="true">标准<small>会封堵</small></button>
+              <button type="button" class="difficulty-btn" data-level="hard" role="radio" aria-checked="false">困难<small>三步推演</small></button>
+            </div>
+            <button class="btn btn-solid btn-block" id="start-ai" type="button">
+              <span>开始人机对弈</span>
+              <svg><use href="#i-arrow"></use></svg>
+            </button>
+            <p class="card-note">无需联网，即开即玩。你先手执黑。</p>
+          </article>
+
+          <article class="mode-card mode-create">
+            <div class="card-topline"><span class="card-index">02</span><span class="card-tag">CREATE</span></div>
+            <div class="mode-heading">
+              <h2>创建房间</h2>
+              <p>生成一个房间号，把邀请链接发给朋友。跨设备实时同步。</p>
+            </div>
+            <label class="field-label" for="create-name">你的昵称 <span>可选</span></label>
+            <input class="field" id="create-name" type="text" maxlength="16" autocomplete="nickname" placeholder="例如：青禾" />
+            <button class="btn btn-outline btn-block" id="create-room" type="button">
+              <span>创建联机房间</span>
+              <svg><use href="#i-arrow"></use></svg>
+            </button>
+            <p class="form-error" id="create-error" role="alert"></p>
+            <p class="card-note">对手加入后自动开局。你执黑先行。</p>
+          </article>
+
+          <article class="mode-card mode-join" id="join-card">
+            <div class="card-topline"><span class="card-index">03</span><span class="card-tag">JOIN</span></div>
+            <div class="mode-heading">
+              <h2>加入房间</h2>
+              <p>输入朋友发来的 6 位房间号，或直接打开邀请链接。</p>
+            </div>
+            <div class="invite-note" id="invite-note" hidden>
+              <span class="invite-dot"></span>
+              <span id="invite-note-text">收到一封空间邀请</span>
+            </div>
+            <div class="join-fields">
+              <div class="join-field-code">
+                <label class="field-label" for="join-code">房间号</label>
+                <input class="field field-code" id="join-code" type="text" maxlength="6" inputmode="text" autocomplete="off" spellcheck="false" placeholder="A7K9Q2" />
+              </div>
+              <div class="join-field-name">
+                <label class="field-label" for="join-name">你的昵称 <span>可选</span></label>
+                <input class="field" id="join-name" type="text" maxlength="16" autocomplete="nickname" placeholder="例如：南星" />
+              </div>
+            </div>
+            <button class="btn btn-outline btn-block" id="join-room" type="button">
+              <span>进入房间</span>
+              <svg><use href="#i-arrow"></use></svg>
+            </button>
+            <p class="form-error" id="join-error" role="alert"></p>
+            <p class="card-note">房主执黑，访客执白。</p>
+          </article>
+        </div>
+
+        <section class="how-strip" aria-labelledby="how-title">
+          <div class="how-heading">
+            <p class="eyebrow">HOW IT WORKS</p>
+            <h2 id="how-title">三个动作，改变一个维度</h2>
+          </div>
+          <div class="how-steps">
+            <div class="how-step">
+              <span class="how-num">01</span>
+              <div class="how-icon stone-icon"><i></i></div>
+              <h3>落子</h3>
+              <p>在当前 9×9 切面的空点落下一枚棋子。</p>
+            </div>
+            <div class="how-step">
+              <span class="how-num">02</span>
+              <div class="how-icon cut-icon"><svg><use href="#i-cut"></use></svg></div>
+              <h3>切面</h3>
+              <p>用当前切面上的一枚己方棋子作切点，沿横或竖切开，棋盘翻入垂直切面。</p>
+            </div>
+            <div class="how-step">
+              <span class="how-num">03</span>
+              <div class="how-icon win-icon"><span></span><span></span><span></span><span></span><span></span></div>
+              <h3>五连</h3>
+              <p>三维空间中任意方向连成五子。胜利线可能穿过你看不见的切面。</p>
+            </div>
+          </div>
+        </section>
+
+        <footer class="home-footer">
+          <p>FIVE / SLICE · 一款由纸面规则长出来的三维棋。</p>
+          <p class="footer-mono">9 × 9 × 9 &nbsp;·&nbsp; 13 DIRECTIONS &nbsp;·&nbsp; ONE CUT</p>
+        </footer>
+      </section>
+
+      <!-- ══════════════════════════ LOBBY ══════════════════════════ -->
+      <section class="screen lobby-screen" id="screen-lobby" hidden>
+        <div class="lobby-shell">
+          <div class="lobby-card">
+            <div class="lobby-top">
+              <p class="eyebrow">PRIVATE ROOM</p>
+              <span class="lobby-status" id="lobby-status"><span class="status-dot"></span>等待挑战者</span>
+            </div>
+            <h1>房间已开启</h1>
+            <p class="lobby-lede">把房间号或邀请链接发给朋友。对手落座后，对局自动开始。</p>
+
+            <div class="room-code-wrap">
+              <span>房间号</span>
+              <strong class="room-code" id="lobby-code">------</strong>
+              <button class="copy-code" id="copy-code" type="button" aria-label="复制邀请链接">
+                <svg><use href="#i-copy"></use></svg>
+              </button>
+            </div>
+
+            <div class="lobby-players">
+              <div class="lobby-seat is-filled">
+                <div class="seat-orb black"></div>
+                <div><span class="seat-role">房主 · 黑棋</span><strong id="lobby-you-name">你</strong><small>已就位</small></div>
+              </div>
+              <div class="lobby-vs"><span>VS</span></div>
+              <div class="lobby-seat is-waiting" id="lobby-opponent">
+                <div class="seat-orb waiting-orb"><span></span></div>
+                <div><span class="seat-role">挑战者 · 白棋</span><strong id="lobby-opponent-name">等待加入</strong><small id="lobby-opponent-note">链接有效</small></div>
+                <div class="waiting-scan" aria-hidden="true"></div>
+              </div>
+            </div>
+
+            <div class="lobby-actions">
+              <button class="btn btn-solid" id="copy-invite" type="button">
+                <svg><use href="#i-copy"></use></svg>
+                <span>复制邀请链接</span>
+              </button>
+              <button class="btn btn-ghost" id="lobby-rules" type="button">先看规则</button>
+              <button class="btn btn-ghost danger" id="lobby-leave" type="button">取消房间</button>
+            </div>
+            <p class="lobby-footnote">房间会保留一段时间。刷新页面或重新打开邀请链接可以回到座位。</p>
+          </div>
+
+          <aside class="lobby-aside">
+            <div class="lobby-aside-visual" aria-hidden="true">
+              <span class="orbit orbit-a"></span>
+              <span class="orbit orbit-b"></span>
+              <span class="orbit orbit-c"></span>
+              <span class="orbit-core"></span>
+            </div>
+            <div class="lobby-aside-copy">
+              <p class="eyebrow">BEFORE YOU START</p>
+              <ul>
+                <li><span>01</span>一回合只能做一件事：落子，或切面。</li>
+                <li><span>02</span>切面需要消耗一枚己方未用过的棋子作切点。</li>
+                <li><span>03</span>五连可以跨越切面，注意右侧的层积图。</li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════ GAME ══════════════════════════ -->
+      <section class="screen game-screen" id="screen-game" hidden>
+        <div class="game-layout">
+          <div class="game-main">
+            <div class="match-strip">
+              <article class="player-card" id="player-opponent">
+                <div class="player-orb" id="opp-orb"><span></span></div>
+                <div class="player-copy">
+                  <span class="player-role" id="opp-role">对手 · 白棋</span>
+                  <strong id="opp-name">镜面引擎</strong>
+                  <small id="opp-meta">切点 0</small>
+                </div>
+                <span class="turn-lamp" id="opp-lamp" aria-hidden="true"></span>
+              </article>
+
+              <div class="match-status">
+                <span class="status-eyebrow" id="status-eyebrow">YOUR TURN</span>
+                <p id="status-text">轮到你行动</p>
+                <span class="connection" id="connection" hidden><span class="connection-dot"></span><span id="connection-text">实时同步</span></span>
+              </div>
+
+              <article class="player-card player-you" id="player-you">
+                <div class="player-orb" id="you-orb"><span></span></div>
+                <div class="player-copy">
+                  <span class="player-role" id="you-role">你 · 黑棋</span>
+                  <strong id="you-name">你</strong>
+                  <small id="you-meta">切点 0</small>
+                </div>
+                <span class="turn-lamp" id="you-lamp" aria-hidden="true"></span>
+              </article>
+            </div>
+
+            <div class="board-card">
+              <div class="board-head">
+                <div class="plane-badge">
+                  <span class="plane-dot"></span>
+                  <div><span>当前切面</span><strong id="plane-label">Z = 4</strong></div>
+                  <em id="plane-kind">水平面</em>
+                </div>
+                <div class="board-head-right">
+                  <span class="round-label" id="board-round">第 1 局</span>
+                  <span class="board-coords" id="plane-axes">X × Y</span>
+                </div>
+              </div>
+
+              <div class="board-stage" id="board-stage">
+                <div class="board-plane">
+                  <div class="axis-corner" id="axis-corner">Z=4</div>
+                  <div class="axis-top" id="axis-top" aria-hidden="true"></div>
+                  <div class="axis-left" id="axis-left" aria-hidden="true"></div>
+                  <div class="board" id="board">
+                    <svg class="board-grid" id="board-grid" viewBox="0 0 900 900" aria-hidden="true"></svg>
+                    <div class="board-cells" id="board-cells"></div>
+                    <svg class="board-overlay" id="board-overlay" viewBox="0 0 900 900" aria-hidden="true"></svg>
+                    <div class="board-sheen" aria-hidden="true"></div>
+                    <div class="board-flash" id="board-flash" aria-hidden="true"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="board-foot">
+                <span class="board-hint" id="board-hint">点击空点落子 · 或发动一次切面</span>
+                <span class="cut-key"><i></i>青线是切痕，裂痕棋子不可再切</span>
+              </div>
+            </div>
+
+            <div class="action-dock" id="action-dock">
+              <div class="dock-copy">
+                <span class="eyebrow" id="dock-eyebrow">YOUR ACTION</span>
+                <strong id="dock-title">轮到你行动</strong>
+                <p id="dock-sub">落下一枚棋子，或选择切面。</p>
+              </div>
+              <button class="btn btn-cut" id="cut-button" type="button">
+                <svg><use href="#i-cut"></use></svg>
+                <span id="cut-label">发动切面</span>
+                <span class="cut-count" id="cut-count">0</span>
+              </button>
+            </div>
+
+            <div class="slice-chooser" id="slice-chooser" hidden>
+              <div class="slice-chooser-copy">
+                <span class="eyebrow">CHOOSE A CUT</span>
+                <strong>棋盘将绕切痕翻转 90°</strong>
+                <p>选择方向后，你会进入与当前切面垂直的新平面。</p>
+              </div>
+              <div class="slice-options">
+                <button class="slice-option" id="dir-h" type="button" data-dir="h">
+                  <span class="slice-arrow">⇄</span>
+                  <span><strong>横向切</strong><small id="dir-h-label">→ Y = 4</small></span>
+                </button>
+                <button class="slice-option" id="dir-v" type="button" data-dir="v">
+                  <span class="slice-arrow">⇅</span>
+                  <span><strong>纵向切</strong><small id="dir-v-label">→ X = 4</small></span>
+                </button>
+                <button class="slice-cancel" id="slice-cancel" type="button">取消</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="game-side">
+            <section class="side-card space-card">
+              <div class="side-head">
+                <div>
+                  <span class="eyebrow">SPACE MAP</span>
+                  <h2>空间切片</h2>
+                </div>
+                <div class="axis-cube" id="axis-cube" data-axis="z" aria-hidden="true">
+                  <svg viewBox="0 0 120 120">
+                    <polygon class="cube-face face-z" points="60,16 102,38 60,60 18,38" />
+                    <polygon class="cube-face face-x" points="18,38 60,60 60,102 18,80" />
+                    <polygon class="cube-face face-y" points="102,38 60,60 60,102 102,80" />
+                    <path class="cube-edge" d="M60 16 102 38v42L60 102 18 80V38L60 16Zm0 22 42-22M60 38 18 16M60 38v64" />
+                    <text x="8" y="32">X</text>
+                    <text x="108" y="92">Y</text>
+                    <text x="66" y="12">Z</text>
+                  </svg>
+                </div>
+              </div>
+              <div class="space-summary">
+                <div><span>切面</span><strong id="space-plane">Z = 4</strong></div>
+                <div><span>面内轴</span><strong id="space-axes">X × Y</strong></div>
+                <div><span>空间层积</span><strong id="space-count">9 层</strong></div>
+              </div>
+              <div class="layer-grid" id="layer-grid" aria-label="同向九层切面缩略图"></div>
+              <div class="layer-legend">
+                <span><i class="legend-active"></i>当前层</span>
+                <span><i class="legend-black"></i>黑</span>
+                <span><i class="legend-white"></i>白</span>
+                <span><i class="legend-last"></i>最后一手</span>
+              </div>
+            </section>
+
+            <section class="side-card log-card">
+              <div class="side-head">
+                <div><span class="eyebrow">RECORD</span><h2>对局记录</h2></div>
+                <span class="move-total" id="move-total">0 手</span>
+              </div>
+              <ol class="move-log" id="move-log" aria-label="对局记录"></ol>
+              <p class="log-empty" id="log-empty">落子与切面会记录在这里。</p>
+            </section>
+
+            <section class="side-card field-note">
+              <span class="eyebrow">FIELD NOTE</span>
+              <p id="tip-text">切面会消耗一枚棋子作为切点。那枚棋子仍参与五连，但整局不能再切。</p>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="site-footer">
+      <span>FIVE / SLICE</span>
+      <span>切面战争 · 9×9×9</span>
+      <span class="footer-mono">DESIGNED FOR TWO MINDS</span>
+    </footer>
+
+    <!-- ══════════════════════════ MODALS ══════════════════════════ -->
+    <div class="modal-layer" id="modal-layer" hidden>
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+
+      <section class="modal rules-modal" id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" hidden>
+        <button class="modal-close" id="rules-close" type="button" aria-label="关闭规则">
+          <svg><use href="#i-close"></use></svg>
+        </button>
+        <p class="eyebrow">THE RULES</p>
+        <h2 id="rules-title">三维五子棋，怎么下？</h2>
+        <p class="rules-intro">棋盘是 9×9×9 的立体空间。你一次只看见一张 9×9 切面，但所有棋子都真实地留在空间里。</p>
+        <div class="rules-grid">
+          <article class="rule-block">
+            <span class="rule-num">01</span>
+            <h3>一回合，只做一件事</h3>
+            <p>选择在<strong>当前切面</strong>的空点落一子；或者选择当前切面上的一枚<strong>己方、未用过的</strong>棋子作为切点，发动一次切面。切面回合不落子。</p>
+          </article>
+          <article class="rule-block">
+            <span class="rule-num">02</span>
+            <h3>切面是 90° 的翻转</h3>
+            <p>沿切点所在的<strong>横排</strong>或<strong>竖列</strong>切开，棋盘绕切痕翻 90°，进入一张与当前平面垂直的新 9×9 切面。两张面共享那条切痕。</p>
+          </article>
+          <article class="rule-block">
+            <span class="rule-num">03</span>
+            <h3>所有棋子永久保留</h3>
+            <p>切面只是换一个视角。旧平面上的棋子仍留在原来的三维坐标中，可能在你之后切回时重新出现，也可能与别的层组成五连。</p>
+          </article>
+          <article class="rule-block">
+            <span class="rule-num">04</span>
+            <h3>三维五连获胜</h3>
+            <p>在三维空间中任意方向连成 5 子即胜：横、竖、纵深、面内斜线、空间斜线都算。切点变成“已切”后仍可参与五连，但整局不能再切。</p>
+          </article>
+        </div>
+        <div class="rules-diagram" aria-hidden="true">
+          <div class="diagram-plane">
+            <span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span>
+            <span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span>
+            <span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span>
+            <span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span><span class="diagram-cell"></span>
+            <span class="diagram-cut-line"></span>
+            <span class="diagram-stone black"></span><span class="diagram-stone white"></span>
+          </div>
+          <div class="diagram-copy">
+            <span class="eyebrow">A CUT IN ONE LINE</span>
+            <p>红色横排就是切痕。翻转后，新切面从这条线“站”起来；这条线上的棋子同时属于两张面。</p>
+            <span class="diagram-badge">当前 Z = 4 &nbsp;→&nbsp; 新切面 Y = 2</span>
+          </div>
+        </div>
+        <div class="rules-note"><strong>开局：</strong>黑棋先行，起始切面为 Z = 4（水平面）。无禁手。棋盘满且无合法行动时判和。</div>
+        <button class="btn btn-solid rules-done" id="rules-done" type="button">进入战场</button>
+      </section>
+
+      <section class="modal result-modal" id="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title" hidden>
+        <p class="eyebrow" id="result-kicker">BLACK WINS</p>
+        <h2 id="result-title">你赢了</h2>
+        <p class="result-sub" id="result-sub">黑棋五连。</p>
+        <div class="result-figure">
+          <canvas id="result-canvas" aria-label="三维棋盘上的五连胜利线"></canvas>
+          <span class="result-figure-label">三维胜利线</span>
+        </div>
+        <div class="result-coords" id="result-coordinates"></div>
+        <div class="result-stats" id="result-stats"></div>
+        <div class="result-actions">
+          <button class="btn btn-solid" id="rematch-btn" type="button">
+            <svg><use href="#i-refresh"></use></svg>
+            <span>再来一局</span>
+          </button>
+          <button class="btn btn-ghost" id="inspect-btn" type="button">查看棋盘</button>
+          <button class="btn btn-ghost" id="result-home" type="button">返回首页</button>
+        </div>
+        <p class="rematch-note" id="rematch-note" hidden>已发送请求，等待对手同意…</p>
+      </section>
+
+      <section class="modal notice-modal" id="notice-modal" role="dialog" aria-modal="true" aria-labelledby="notice-title" hidden>
+        <div class="notice-icon" id="notice-icon">!</div>
+        <p class="eyebrow" id="notice-kicker">ROOM NOTICE</p>
+        <h2 id="notice-title">对手已离开</h2>
+        <p id="notice-text">这局棋无法继续了。返回首页，开启新的战场。</p>
+        <div class="notice-actions">
+          <button class="btn btn-solid" id="notice-primary" type="button">返回首页</button>
+          <button class="btn btn-ghost" id="notice-secondary" type="button" hidden>留在棋盘</button>
+        </div>
+      </section>
+
+      <section class="modal confirm-modal" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+        <p class="eyebrow">LEAVE THE BOARD</p>
+        <h2 id="confirm-title">离开这局棋？</h2>
+        <p id="confirm-text">离开后，对手会收到你已退出的提示。当前棋局不会被保存。</p>
+        <div class="confirm-actions">
+          <button class="btn btn-solid danger" id="confirm-leave" type="button">确认离开</button>
+          <button class="btn btn-ghost" id="confirm-cancel" type="button">继续对弈</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast-stack" id="toast-stack" role="status" aria-live="polite"></div>
+    <div class="loading-screen" id="loading-screen" hidden>
+      <div class="loading-mark"><span></span><span></span><span></span></div>
+      <p id="loading-text">正在进入空间…</p>
+    </div>
+    <p class="sr-only" id="live-region" aria-live="polite"></p>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
